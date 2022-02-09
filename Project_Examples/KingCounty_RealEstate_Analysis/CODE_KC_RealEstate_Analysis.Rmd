@@ -1,0 +1,628 @@
+---
+title: "King County Real Estate Exploratory Data Analysis"
+author: "Josh Wolfe"
+date: "07/08/2021"   
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+---
+
+```{r echo = FALSE}
+# Course: 5210 Data Visualization
+# Purpose: Quick Project 1
+# Date: July 08, 2021
+# Author: Josh Wolfe
+```
+
+# Load Libraries
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+# Load packages
+library(tidyverse)
+library(ggplot2) 
+library(gridExtra)
+library(scales) 
+library(vtable)
+library(patchwork)
+library(GGally)
+library(janitor)
+library(choroplethrZip)
+library(choroplethr)
+```
+
+# Load and Transform Data
+
+```{r}
+# Load data
+df <- read.csv("qp1_data.csv")
+
+# Transform Numerical variables to factor
+df[,'waterfront'] <- factor(df[,'waterfront'])
+df[,'view'] <- factor(df[,'view'])
+df[,'condition'] <- factor(df[,'condition'])
+df[,'yr_built'] <- factor(df[,'yr_built'])
+df[,'yr_renovated'] <- factor(df[,'yr_renovated'])
+df[,'zip_code'] <- factor(df[,'zip_code'])
+df[,'grade'] <- factor(df[,'grade'])
+
+```
+
+# Base EDA Step 1: Uni-variate non-graphical EDA
+
+```{r}
+# Look at the top few rows of the data
+head(df)
+```
+
++ Data appears to be tidy
+
+    - Each column is of the same variable type and has a unique entry for each row.
+
+```{r}
+# Get a breakdown of the variables
+str(df)
+```
+
+```{r}
+# Get a breakdown of the variables
+vtable(df)
+```
+
++ Three Numeric variables
++ Three integer variables
++ Seven factor variables
+
+    - Waterfront is a binary variable where 0 is no and 1 is yes
+    - View, Grade, and Condition are rankings
+    - Yr_built and Yr_renovated are years property was built and renovated
+    - Zip Code is the property zip code
+
+
+```{r}
+# Get variable descriptive statistics
+summary(df)
+```
+
++ Comments and questions about the data
+
+    - The median property value is $450,000 while the mean is $540,182
+    - Property values are positivley skewed likely due to high value outliers
+    - Bedrooms are also positivley skewed with a median of 3 but mean of 3.4
+    - There is a maximum of 33 bedrooms
+    - Interestingly bathrooms are slightly negatively skewed with a median of
+    2.25 and mean of 2.1
+    - Living space and lot size are also positviely skewed
+    - Median/mean floor count is 1.5 with a max of 3.5 floors
+    - A majority of properties has no waterfront or view
+    - Do properties with a waterfront or view cost more
+    - Do properties with views cost more than those with waterfronts
+    - Are waterfront properties considered to have a view
+    - Most properties are condition 3, which may be average condition
+    - Most properties have not be renovated
+  
+## Potential research questions
+
++ How are different property values associated with price
+
+    - Square footage of living space or property, floor count, grade,
+    condition, etc
+
++ What does valuation look like from a zip code perspective
+
++ What does waterfront and view do to valuation
+
+# Base EDA Step 2: Uni-variate graphical EDA
+
+## Values
+
+```{r}
+# Create histogram for price
+values <- ggplot(data = df, mapping = aes(x = price)) + 
+  geom_histogram() +
+  labs(title = "Property Values", x = "Price in Dollars",
+       y = "Properties") +
+  scale_x_continuous(labels = label_number())
+
+values
+```
++ Histogram for values show the long right hand side tail
+
+    - shows median is the appropriate statistic to use
+    - Skews are due to high value homes
+    
+## Home Features
+
+```{r}
+# Create four graph graphics of bedrooms, bathrooms, living and lot squarefootage
+bedrooms <- ggplot(data = df, mapping = aes(x = bedrooms)) + 
+  geom_bar() +
+  labs(title = "Bedroom Count", x = "bedrooms",
+       y = "count")
+
+bathrooms <- ggplot(data = df, mapping = aes(x = bathrooms)) + 
+  geom_bar() +
+  labs(title = "Bathroom Count", x = "bathrooms",
+       y = "count")
+
+sqft_lv <- ggplot(data = df, mapping = aes(x = sqft_living)) + 
+  geom_histogram() +
+  labs(title = "Living Space", x = "Square Footage",
+       y = "count")
+
+sqft_p <- ggplot(data = df, mapping = aes(x = sqft_lot)) + 
+  geom_histogram() +
+  labs(title = "Lot Square Footage", x = "Square Footage",
+       y = "count")
+
+(bathrooms + bedrooms) / (sqft_lv + sqft_p)
+```
+
++ Bar chars show positive skews due to large homes
+
+    - shows median is the appropriate statistic to use for feature values
+
+## Property details
+
+```{r}
+# Generate four graph graphic of property details
+floors <- ggplot(data = df, mapping = aes(x = floors)) + 
+  geom_bar() +
+  labs(title = "Floor count", x = "Floors",
+       y = "Properties")
+
+condition <- ggplot(data = df, mapping = aes(x = condition)) + 
+  geom_bar() +
+  labs(title = "Property Condition", x = "Condition",
+       y = "properties")
+
+grade <- ggplot(data = df, mapping = aes(x = grade)) + 
+  geom_bar() +
+  labs(title = "Property Grade", x = "grade",
+       y = "properties")
+
+view <- ggplot(data = df, mapping = aes(x = view)) + 
+  geom_bar() +
+  labs(title = "Property View", x = "View Level",
+       y = "Properties")
+
+(floors + view) / (grade + condition)
+```
+
++ Bar charts show that grade is pretty uniform while most properties have
+either one or two floors and no view 
++ Most properties have an average condition or greater
+
+## Property Details Continued
+
+```{r}
+# Continue previous graphic with remaining variables
+waterfront <- ggplot(data = df, mapping = aes(x = waterfront)) + 
+  geom_bar() +
+  labs(title = "Waterfront Properties", x = "Waterfront",
+       y = "Properties")
+
+yr_built <- ggplot(data = df, mapping = aes(x = yr_built)) + 
+  geom_bar() +
+  labs(title = "Year Property Built", x = "Year",
+       y = "properties")
+
+yr_renovated <- ggplot(data = df, mapping = aes(x = yr_renovated)) + 
+  geom_bar() +
+  labs(title = "Year Property Renovated", x = "Year",
+       y = "properties")
+
+zip <- ggplot(data = df, mapping = aes(x = zip_code)) + 
+  geom_bar() +
+  labs(title = "Property Zip Code", x = "Zip Code",
+       y = "Properties")
+
+(waterfront + zip) / (yr_built + yr_renovated)
+```
+
++ Histogram shows that building has increased over the years while most
+properties remain renovated. Most properties are not waterfront properties
+
++ There is no single zip code that stands out in property count.
+
+# Base EDA Step 3: Multi-variate non-graphical EDA
+
+```{r}
+# Look at correlational data of quantitative variables
+num_corr <- df %>%
+  select_if(is.numeric) %>%
+  cor() %>%
+  round(2) %>%
+  kable()
+
+num_corr
+```
+
++ Living square footage has the highest positive correlation with price at 0.7.
+This is followed by bathrooms are 0.53
+
+    - Interestingly bathrooms are more positivley correlated with living square
+    footage than bedroom count
+    - Lot size has very little correlation with price
+
+```{r}
+# Examine the overlap of waterfront properties and properties with views
+df %>%
+  tabyl(view, waterfront) %>%
+  adorn_totals(where = c("row", "col")) %>%
+  kable()
+```
++ Most Waterfront homes have a view ranked 4
+
+    - Do waterfront and view property's values reflect this?
+
+# Base EDA Step 4: Multi-variate graphical EDA
+
+## Categorical Variables
+
+```{r}
+# Examine waterfront property information
+wv <- df %>%
+    ggplot(mapping = aes(x = waterfront, fill = view)) +
+    geom_bar(position = "dodge") +
+    coord_flip()
+  
+wc <- df %>%
+    ggplot(mapping = aes(x = waterfront, fill = condition)) +
+    geom_bar(position = "dodge")
+  
+wg <- df %>%
+    ggplot(mapping = aes(x = waterfront, fill = grade)) +
+    geom_bar(position = "dodge")
+
+wv / (wc + wg)
+
+```
+
++ Waterfront properties are a ver small portion of overall sales
+
+```{r}
+# Examine 
+vw <- df %>%
+    ggplot(mapping = aes(fill = waterfront, y = view)) +
+    geom_bar(position = "dodge") +
+    coord_flip()
+  
+vc <- df %>%
+    ggplot(mapping = aes(x = view, fill = condition)) +
+    geom_bar(position = "dodge")
+  
+vg <- df %>%
+    ggplot(mapping = aes(x = view, fill = grade)) +
+    geom_bar(position = "dodge")
+
+vw / (vc + vg)
+```
+
++ Properties with views are a small portion of overall sales
+
+    - Properties with views are usually found with condition 3 and grade 7+
+
+```{r}
+# Look at condition and 
+grid.arrange(
+
+df %>%
+  ggplot(mapping = aes(x = grade, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+
+df %>%
+  ggplot(mapping = aes(x = condition, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+
+df %>%
+  ggplot(mapping = aes(x = yr_built, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+
+df %>%
+  ggplot(mapping = aes(x = zip_code, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number())
+
+)
+```
+
++ Grade is also positively correlated while condition interestingly follows
+and inverted U, with condition 3 and 4 being high value homes
+
+    - I wonder where the disconnect is for condition 5 homes and why the high
+    value homes are not in that catagory
+    - High value homes seem to be spread out among multiple zip codes and years
+    built
+
+```{r}
+df %>%
+  group_by(zip_code) %>%
+  summarize(median = median(price))
+```
+
++ 98039 (Medina) has the highest median property value ($1,895,000) 
+while 98168 (Skyway) and 98002 (Auburn) are tied for lowest ($235,000)
+
+## Quantitative Variables
+
+```{r}
+
+grid.arrange(
+  
+df %>%
+  ggplot(mapping = aes(x = sqft_living, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+  
+df %>%
+  ggplot(mapping = aes(x = sqft_lot, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+
+df %>%
+  ggplot(mapping = aes(x = bedrooms, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+
+df %>%
+  ggplot(mapping = aes(x = bathrooms, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number()),
+
+df %>%
+  ggplot(mapping = aes(x = floors, y = price)) +
+  geom_point() +
+  scale_y_continuous(labels = label_number())
+
+)
+```
+
++ As seen before price is positively correlated with living space while lot size
+is not
+
+    - The bedroom outlier has a relatively low selling price which is not
+    what I expected
+    - Bathrooms and floors follows an expected patters, with more bathrooms being
+    associated with a higher selling price and most homes falling into the 2 floor
+    range
+
+# Detailed EDA: Questions Raised in Base EDA
+
+## How do waterfront property values compare to non-waterfront?
+
+```{r}
+# research question code
+# faceted graph
+
+df %>%
+  ggplot(mapping = aes(x = price)) +
+  geom_boxplot() +
+  coord_flip() +
+  scale_x_continuous(labels = label_number()) +  
+  facet_wrap( ~ waterfront)
+
+
+```
+
+```{r}
+# Get median property values
+df %>%
+  group_by(waterfront) %>%
+  summarize(median = median(price))
+```
+
+
++ Here we can see that the average values for waterfront properties is higher
+than non-waterfront
+
+    - The median price for waterfront properties is $1,400,000 while non-waterfront
+    is $450,000
+
+## How does the value of properties with views compare to non-view properties?
+
+```{r}
+df %>%
+  ggplot(mapping = aes(x = price)) +
+  geom_boxplot() +
+  coord_flip() +
+  scale_x_continuous(labels = label_number()) +  
+  facet_wrap( ~ view)
+```
+
+```{r}
+# Get median property values
+df %>%
+  group_by(view) %>%
+  summarize(median = median(price))
+```
+
++ Property value increases with view with the exception of a view ranked 1 and 2
++ The median value for properties without a view is $432,500 while properties with
+a view ranked 5 have a median value of $1,190,000
+
+## What does the overall valuation breakdown of the area look like?
+
+```{r}
+final_zip <- df %>%
+  group_by(zip_code) %>%
+  summarise(zme = median(price)) %>%
+  ggplot(aes(x = zip_code, y = zme)) +
+  geom_bar(stat = "identity", fill = "orange", width = 0.5) +
+  scale_y_continuous(breaks = round(seq(min(df$price), max(df$price), by = 100000),1),
+                     labels = scales::dollar_format())+
+  geom_text(aes(label=zme), vjust=-0.3, size=3.5)+
+  theme_minimal()+
+  ggtitle("",
+          sub = "") +
+  labs(x = "", y = "Property Value")
+
+final_zip
+```
+
+
+# Summary
+
++ Both waterfront and view are associated with higher property values
++ As view ranking increases property value increases
++ Waterfront and properties with views are a small fraction of overall property sales
++ There is a large difference in median valuation between zip codes
+
+# Create and Save Professional Quality Visual
+
+```{r}
+# Waterfront
+
+final_waterfront <- df %>%
+  group_by(waterfront) %>%
+  summarise(wme = median(price)) %>%
+  ggplot(aes(x = waterfront, y = wme)) +
+  geom_bar(stat = "identity", fill = "light green", width = 0.5) +
+  scale_y_continuous(breaks = round(seq(min(df$price), max(df$price), by = 100000),1),
+                     labels = scales::dollar_format())+
+  geom_text(aes(label=wme), vjust=-0.3, size=3.5)+
+  theme_minimal()+
+  ggtitle("",
+          sub = "") +
+  labs(x = "", y = "Property Value") +
+  scale_x_discrete(labels=c("0" = "Non-waterfront", "1" = "Waterfront"))
+
+ggsave(filename = "final_waterfront.png", plot = final_waterfront)
+```
+
+```{r}
+# View
+final_view <- df %>%
+  group_by(view) %>%
+  summarise(vme = median(price)) %>%
+  ggplot(aes(x = view, y = vme)) +
+  geom_bar(stat = "identity", fill = "light blue", width = 0.5) +
+  scale_y_continuous(breaks = round(seq(min(df$price), max(df$price), by = 100000),1),
+                     labels = scales::dollar_format())+
+  geom_text(aes(label=vme), vjust=-0.3, size=3.5)+
+  theme_minimal()+
+  ggtitle("Median Property Values Based on View Rank and Water Frontage",
+          sub = "In King County") +
+  labs(x = "", y = "Property Value") +
+  scale_x_discrete(labels=c("0" = "No View", "1" = "Rank 1", "2" = "Rank 2",
+                            
+                            "3" = "Rank 3", "4" = "Rank 4"))
+
+final_view_waterfront <- final_view + final_waterfront
+
+ggsave(filename = "final_view_waterfront.png", plot = final_view_waterfront)
+
+final_view_waterfront
+```
+
+```{r}
+# Create Zip Map
+zip_values <- df %>%
+  group_by(zip_code) %>%
+  summarise(zme = median(price))
+colnames(zip_values) <- c("region", "value")
+zip_values$region <- as.character(zip_values$region)
+
+kc_fips <- 53033
+
+data(zip.regions)
+data(zip_values)
+final_zip <- zip_choropleth(zip_values,
+               county_zoom = kc_fips,
+               title      = "Median King County Property Values by Zip Code",
+               legend     = "Values in US Dollars")
+
+ggsave(filename = "final_zip.png", plot = final_zip)
+
+final_zip
+```
+
+# Statistical EDA
+
+```{r}
+library(Hmisc)
+library(MultinomialCI)
+library(htmlTable)
+```
+
+The steps of inference are:
+Gather a representative sample from a population
+Establish the null/alternative hypothesis (the research question)
+Set confidence level 1−α to balance Type I & II errors
+α is the risk level
+Test the hypothesis for practical and statistical significance based on the sample
+practical significance: How big is the impact or difference of the variable(s)?
+statistical significance: How consistent or reliable is the difference?
+State the results
+
+
+## View Rank
+
++ Null: View has no influence on property value
+
+    - True null: view rank does not impact value
+    - False null: view rank does impact sales
+    - Type 1: reject true null - ask more for property based on view (inepensive, if expensive use small alpha)
+    - Type 2: fail to reject false null - don't consider view in appraisal (expensive, use large alpha)
+    
+Alternative: View has an influence on property value
+
+```{r}
+vchi <- chisq.test(df$view, df$price)
+vchi
+```
+
+### Practical Significance
+
+```{r}
+summary(df$view)
+```
+There are fewer properties with views than non-view properties. The small sample size may not be practically or significantly significant
+
+### Statistical Significance
+
+The property values are statistically different in relation to view rank with a P value of less than 0.001. Therefore we reject the null hypothesis that property values are not related to view
+
+Non-technical: A properties view ranking has an impact on the property's value
+Technical: Property values are statistically different for different view ranks with a P value of less than 0.001
+
+## Waterfrontage
+
++ Null: Water frontage has no influence on property value
+Alternative: Water frontage has an influence on property value
+
+    - True null: water frontage does not impact value
+    - False null: waterfrontage does impact sales
+    - Type 1: reject true null - ask more for property based on water frontage (inepensive, if expensive use small alpha)
+    - Type 2: fail to reject false null - don't consider water frontage in appraisal (expensive, use large alpha)
+    
+Alternative: Water frontage has an influence on property value
+
+```{r}
+wchi <- chisq.test(df$waterfront, df$price)
+wchi
+```
+
+### Practical Significance
+
+```{r}
+summary(df$waterfront)
+```
+There are only 163 waterfront sales out of 21613 total sales. The sample size is too small to be practically significant
+
+### Statistical Significance
+
+Waterfront property values are statistically different from non-waterfront with a p value of less than 0.001. We reject the null hypothesis that waterfront does not influence property value.
+
+
+Non-technical: Water frontage has an impact on property value
+Technical: Water front property values are statistically different with a P value of less then 0.001
+
+
+
+
